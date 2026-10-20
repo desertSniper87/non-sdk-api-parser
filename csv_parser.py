@@ -32,6 +32,9 @@ def permissions(version):
 
 
 if __name__ == "__main__":
+    #  for v in VERSIONS.values(): 
+        #  print(f"Android {v}: {[permissions(v)]}") 
+
     # one permission set per Android version, in 10 -> 13 order
     sets = [permissions(v) for v in VERSIONS.values()]
     for version, names in zip(VERSIONS.values(), sets):
