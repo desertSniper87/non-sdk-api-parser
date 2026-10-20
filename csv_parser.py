@@ -1,31 +1,40 @@
 #!/usr/bin/env python3
-"""Parse hiddenapi-flags.csv for Android 10-13."""
+"""Count distinct Manifest permissions in hiddenapi-flags.csv, Android 10-13."""
 import csv
+import re
 from pathlib import Path
 
-VERSIONS = {"qt": 10, "rvc": 11, "sc": 12, "tm": 13}  # Q R S T
 CSV_DIR = Path(__file__).parent / "csv"
+VERSIONS = {"qt": 10, "rvc": 11, "sc": 12, "tm": 13}  # Q R S T
+
+# Landroid/Manifest$permission;->NAME:Type
+# skips methods like <init>()V and Landroid/Manifest$permission_group;
+PERM = re.compile(r"^Landroid/Manifest\$permission;->([A-Za-z0-9_]+):")
 
 
-def parse(path):
-    """-> {signature: [flag, ...]}"""
-    with open(path, newline="") as f:
-        return {row[0]: row[1:] for row in csv.reader(f) if row}
+def permissions(version):
+    """Collect permission names declared in one Android version's CSV.
 
+    Args:
+        version: Android version number, e.g. 10 (10-13 supported).
 
-def load(version):
+    Returns:
+        set[str] of permission names, e.g. {"CAMERA", "INTERNET", ...}.
+    """
+    # Android version number -> release codename used in the file name
     name = next(k for k, v in VERSIONS.items() if v == version)
-    return parse(CSV_DIR / f"{name}.csv")
+    names = set()
+    for row in csv.reader(open(CSV_DIR / f"{name}.csv", newline="")):
+        match = PERM.match(row[0]) if row else None
+        if match:
+            names.add(match.group(1))
+    return names
 
-
-PERM = "Landroid/Manifest$permission;->"
-
-def permissions(members):
-    """Set of Manifest permission signatures"""
-    return {sig for sig in members if sig.startswith(PERM)}
 
 if __name__ == "__main__":
-    sets = {v: permissions(load(v)) for v in VERSIONS.values()}
-    for version, perms in sets.items():
-        print(f"Android {version}: {len(perms)}")
-    print(f"Total distinct across all versions: {len(set().union(*sets.values()))}")
+    # one permission set per Android version, in 10 -> 13 order
+    sets = [permissions(v) for v in VERSIONS.values()]
+    for version, names in zip(VERSIONS.values(), sets):
+        print(f"Android {version}: {len(names)}")
+    # union: permissions that exist in at least one version
+    print(f"Total distinct across all versions: {len(set().union(*sets))}")
