@@ -2,9 +2,9 @@
 """Count distinct Manifest permissions in hiddenapi-flags.csv, Android 10-13."""
 import csv
 import re
-from pathlib import Path
 
-CSV_DIR = Path(__file__).parent / "csv"
+CSV_DIR = "csv"
+OUTPUT = "permissions.txt"
 VERSIONS = {"qt": 10, "rvc": 11, "sc": 12, "tm": 13}  # Q R S T
 
 # Landroid/Manifest$permission;->NAME:Type
@@ -24,7 +24,7 @@ def permissions(version):
     # Android version number -> release codename used in the file name
     name = next(k for k, v in VERSIONS.items() if v == version)
     names = set()
-    for row in csv.reader(open(CSV_DIR / f"{name}.csv", newline="")):
+    for row in csv.reader(open(f"{CSV_DIR}/{name}.csv", newline="")):
         match = PERM.match(row[0]) if row else None
         if match:
             names.add(match.group(1))
@@ -32,12 +32,13 @@ def permissions(version):
 
 
 if __name__ == "__main__":
-    #  for v in VERSIONS.values(): 
-        #  print(f"Android {v}: {[permissions(v)]}") 
-
     # one permission set per Android version, in 10 -> 13 order
     sets = [permissions(v) for v in VERSIONS.values()]
-    for version, names in zip(VERSIONS.values(), sets):
-        print(f"Android {version}: {len(names)}")
+    lines = [f"Android {v}: {len(names)}" for v, names in zip(VERSIONS.values(), sets)]
     # union: permissions that exist in at least one version
-    print(f"Total distinct across all versions: {len(set().union(*sets))}")
+    lines.append(f"Total distinct across all versions: {len(set().union(*sets))}")
+
+    report = "\n".join(lines)
+    print(report)
+    with open(OUTPUT, "w") as f:
+        f.write(report + "\n")
